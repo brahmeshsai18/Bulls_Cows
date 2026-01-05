@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cows & Bulls – You vs Brahmesh</title>
+
+ <div class="bottom-right">
+    By "BRAHMESH"
+  </div>
+<link rel="icon" href="bc.png" type="image/x-icon">
+
+
+<style>
+.bottom-right {
+      position: fixed;  /* fixed keeps it in the viewport */
+      bottom: 10px;     /* distance from bottom */
+      right: 10px;      /* distance from right */
+      background-color: lightblue;
+      padding: 10px;
+      border-radius: 5px;
+    }
+
+body {
+    font-family: Arial, sans-serif;
+    background: #5499aa;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+.game {
+    background: white;
+    padding: 25px;
+    width: 400px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    text-align: center;
+}
+input, button {
+    width: 100%;
+    padding: 8px;
+    margin-top: 8px;
+    font-size: 16px;
+}
+#brahmeshGuess {
+    font-size: 22px;
+    font-weight: bold;
+}
+.turn {
+    font-weight: bold;
+    margin: 10px 0;
+}
+</style>
+</head>
+
+<body>
+
+<div class="game">
+
+    <h2>🐄🐂 Cows & Bulls — You vs Brahmesh</h2>
+
+    <p>
+        Think of a <b>4-digit number</b><br>
+        (Digits 1–9 only, no repeats)
+    </p>
+
+    <div class="turn" id="turnText"></div>
+
+    <!-- HUMAN TURN -->
+    <div id="humanTurn">
+        <input id="humanGuess" placeholder="Your guess (1–9 only)">
+        <button onclick="humanGuess()">Submit Guess</button>
+    </div>
+
+    <!-- BRAHMESH TURN -->
+    <div id="brahmeshTurn" style="display:none;">
+        <p><b>Brahmesh guesses:</b></p>
+        <div id="brahmeshGuess">----</div>
+        <input id="bulls" placeholder="Bulls">
+        <input id="cows" placeholder="Cows">
+        <button onclick="brahmeshResult()">Submit Result</button>
+    </div>
+
+    <p id="status"></p>
+
+</div>
+
+<script>
+const DIGITS = 4;
+
+let brahmeshSecret = generateSecret();
+let possibleNumbers = generateAllNumbers();
+let brahmeshGuessValue = "";
+let turn = "human";
+let gameOver = false;
+
+updateTurn();
+
+/* ---------- TURN MANAGEMENT ---------- */
+
+function updateTurn() {
+    if (gameOver) return;
+
+    document.getElementById("humanTurn").style.display =
+        turn === "human" ? "block" : "none";
+
+    document.getElementById("brahmeshTurn").style.display =
+        turn === "brahmesh" ? "block" : "none";
+
+    document.getElementById("turnText").textContent =
+        turn === "human" ? "Your Turn" : "Brahmesh's Turn";
+
+    if (turn === "brahmesh") {
+        brahmeshGuessValue =
+            possibleNumbers[Math.floor(Math.random() * possibleNumbers.length)];
+        document.getElementById("brahmeshGuess").textContent =
+            brahmeshGuessValue;
+    }
+}
+
+/* ---------- HUMAN GUESS ---------- */
+
+function humanGuess() {
+    let guess = document.getElementById("humanGuess").value;
+
+    if (!isValid(guess)) {
+        alert("Enter 4 unique digits from 1 to 9 (no zero)");
+        return;
+    }
+
+    let result = evaluate(brahmeshSecret, guess);
+    document.getElementById("status").textContent =
+        `You guessed → Bulls: ${result.bulls}, Cows: ${result.cows}`;
+
+    if (result.bulls === DIGITS) {
+        endGame(`🎉 You win! Brahmesh's number was ${brahmeshSecret}`);
+        return;
+    }
+
+    document.getElementById("humanGuess").value = "";
+    turn = "brahmesh";
+    updateTurn();
+}
+
+/* ---------- BRAHMESH GUESS ---------- */
+
+function brahmeshResult() {
+    let bulls = parseInt(document.getElementById("bulls").value);
+    let cows = parseInt(document.getElementById("cows").value);
+
+    if (
+        isNaN(bulls) ||
+        isNaN(cows) ||
+        bulls < 0 ||
+        cows < 0 ||
+        bulls + cows > DIGITS
+    ) {
+        alert("Invalid Bulls/Cows values");
+        return;
+    }
+
+    if (bulls === DIGITS) {
+        endGame("🤖 Brahmesh guessed your number!");
+        verifyHuman();
+        return;
+    }
+
+    possibleNumbers = possibleNumbers.filter(num => {
+        let r = evaluate(num, brahmeshGuessValue);
+        return r.bulls === bulls && r.cows === cows;
+    });
+
+    if (possibleNumbers.length === 0) {
+        endGame("❌ No possible numbers left. Are inputs correct?");
+        verifyHuman();
+        return;
+    }
+
+    document.getElementById("bulls").value = "";
+    document.getElementById("cows").value = "";
+    turn = "human";
+    updateTurn();
+}
+
+/* ---------- UTILITIES ---------- */
+
+function generateSecret() {
+    let digits = [];
+    while (digits.length < DIGITS) {
+        let d = Math.floor(Math.random() * 9) + 1;
+        if (!digits.includes(d)) digits.push(d);
+    }
+    return digits.join("");
+}
+
+function generateAllNumbers() {
+    let list = [];
+    for (let a = 1; a <= 9; a++)
+        for (let b = 1; b <= 9; b++)
+            for (let c = 1; c <= 9; c++)
+                for (let d = 1; d <= 9; d++) {
+                    let num = `${a}${b}${c}${d}`;
+                    if (new Set(num).size === DIGITS) list.push(num);
+                }
+    return list;
+}
+
+function evaluate(secret, guess) {
+    let bulls = 0, cows = 0;
+    for (let i = 0; i < DIGITS; i++) {
+        if (secret[i] === guess[i]) bulls++;
+        else if (secret.includes(guess[i])) cows++;
+    }
+    return { bulls, cows };
+}
+
+function isValid(num) {
+    return /^[1-9]{4}$/.test(num) && new Set(num).size === DIGITS;
+}
+
+function endGame(message) {
+    gameOver = true;
+    document.getElementById("status").textContent = message;
+}
+
+/* ---------- FINAL VERIFICATION ---------- */
+
+function verifyHuman() {
+    setTimeout(() => {
+        prompt("Enter the number you were thinking of (1–9, no repeats):");
+        alert("Game finished. Thanks for playing!");
+    }, 500);
+}
+</script>
+
+</body>
+</html>
